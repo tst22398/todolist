@@ -4,7 +4,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const _ = require("lodash");
-const config = require(__dirname + "/config.js");
+// const config = require(__dirname + "/config.js");
 
 const app = express();
 
@@ -13,8 +13,8 @@ app.set('view engine', 'ejs');
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(express.static("public"));
-const URI = process.env.DATABASE || config.URI;
-const PORT = process.env.PORT || config.PORT;
+const URI = process.env.DATABASE;
+const PORT = process.env.PORT;
 
 connectToDatabase(URI);
 
