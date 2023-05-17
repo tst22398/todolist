@@ -11,107 +11,108 @@ const app = express();
 app.set('view engine', 'ejs');
 
 app.use(express.json());
-app.use(express.urlencoded({extended: true}));
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
-const URI = process.env.DATABASE;
-const PORT = process.env.PORT;
+const URI = process.env.DATABASE || "mongodb://localhost:27017/test";
+const PORT = process.env.PORT || 30000;
 
-connectToDatabase(URI);
+main().then
 
-const itemsSchema = new mongoose.Schema({
-  name: String
-});
+async function main() {
+  try {
+    await mongoose.connect(URI);
+    console.log("Connect to database successfully!");
+  } catch (err) {
+    console.log("There's some problem: " + err);
+  }
 
-const listSchema = new mongoose.Schema({
-  name: String,
-  items: [itemsSchema]
-});
-
-const Item = mongoose.model("item", itemsSchema, "items");
-const List = mongoose.model("list", listSchema, "lists");
-
-app.get("/", async function(req, res) {
-  const items = await Item.find({}, {name: 1, _id: 1});
-
-  res.render("list", {listTitle: "Today", newListItems: items});
-});
-
-app.post("/", async function(req, res){
-  const itemName = req.body.newItem;
-  const listName = req.body.listName;
-  console.log(req.body);
-
-  const newItem = new Item({
-    name: itemName
+  const itemsSchema = new mongoose.Schema({
+    name: String
   });
 
-  if (listName === "Today") {
-    await newItem.save();
-  
-    res.redirect("/");
-  } else {
-    const list = await List.findOne({name: listName});
-    list.items.push(newItem);
-    await list.save();
-    res.redirect("/" + listName);
-  }
+  const listSchema = new mongoose.Schema({
+    name: String,
+    items: [itemsSchema]
+  });
 
-});
+  const Item = mongoose.model("item", itemsSchema, "items");
+  const List = mongoose.model("list", listSchema, "lists");
 
-app.get("/:listName", async function(req,res){
-  const listName = _.startCase(req.params.listName);
+  app.get("/", async function (req, res) {
+    const items = await Item.find({}, { name: 1, _id: 1 });
 
-  const result = await List.findOne({name: listName});
-  console.log(result);
+    res.render("list", { listTitle: "Today", newListItems: items });
+  });
 
-  if (!result) {
-    const list = new List({
-      name: listName,
-      items: []
+  app.post("/", async function (req, res) {
+    const itemName = req.body.newItem;
+    const listName = req.body.listName;
+    console.log(req.body);
+
+    const newItem = new Item({
+      name: itemName
     });
 
-    await list.save();
-    res.redirect("/" + listName);
-  } else {
-    res.render("list", {listTitle: result.name, newListItems: result.items});
-  }
-});
+    if (listName === "Today") {
+      await newItem.save();
 
-app.get("/about", function(req, res){
-  res.render("about");
-});
+      res.redirect("/");
+    } else {
+      const list = await List.findOne({ name: listName });
+      list.items.push(newItem);
+      await list.save();
+      res.redirect("/" + listName);
+    }
 
-app.post("/delete", async function(req, res) {
-  const checkedItem = req.body.checkbox;
-  const listName = req.body.listName;
+  });
 
-  if (listName === "Today") {
-    await Item.findByIdAndRemove(checkedItem);
-    res.redirect("/");
-  } else {
-    const list = await List.findOneAndUpdate(
-      { name: listName }, 
-      {
-        $pull: {
-          items: { _id: checkedItem }
+  app.get("/:listName", async function (req, res) {
+    const listName = _.startCase(req.params.listName);
+
+    const result = await List.findOne({ name: listName });
+    console.log(result);
+
+    if (!result) {
+      const list = new List({
+        name: listName,
+        items: []
+      });
+
+      await list.save();
+      res.redirect("/" + listName);
+    } else {
+      res.render("list", { listTitle: result.name, newListItems: result.items });
+    }
+  });
+
+  app.get("/about", function (req, res) {
+    res.render("about");
+  });
+
+  app.post("/delete", async function (req, res) {
+    const checkedItem = req.body.checkbox;
+    const listName = req.body.listName;
+
+    if (listName === "Today") {
+      await Item.findByIdAndRemove(checkedItem);
+      res.redirect("/");
+    } else {
+      const list = await List.findOneAndUpdate(
+        { name: listName },
+        {
+          $pull: {
+            items: { _id: checkedItem }
+          }
         }
-      }
-    );
-    res.redirect("/" + listName);
-  }
+      );
+      res.redirect("/" + listName);
+    }
 
-  
-});
 
-app.listen(PORT, function() {
-  console.log("Server started on port " + PORT);
-});
+  });
 
-async function connectToDatabase(uri) {
-  try {
-    await mongoose.connect(uri);
-    console.log("Connect to database successfully! " + uri);
-  } catch (err) {
-    console.log(err);
-  }
-} 
+  app.listen(PORT, function () {
+    console.log("Server started on port " + PORT);
+  });
+}
+
